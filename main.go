@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/astenir/crawler/log"
@@ -52,7 +54,7 @@ func main() {
 	}
 
 	err = cfg.Load(file.NewSource(
-		file.WithPath("/home/muelsyse/projects/crawler/config.toml"),
+		file.WithPath(configPath()),
 		source.WithEncoder(enc),
 	))
 
@@ -79,7 +81,7 @@ func main() {
 	logger.Sugar().Info("proxy list: ", proxyURLs, " timeout: ", timeout)
 
 	if p, err = proxy.RoundRobinProxySwitcher(proxyURLs...); err != nil {
-		logger.Error("RoundRobinProxySwitcher failed", zap.Error(err))
+		logger.Warn("RoundRobinProxySwitcher disabled", zap.Error(err))
 	}
 
 	var f spider.Fetcher = &collect.BrowserFetch{
@@ -129,6 +131,18 @@ func main() {
 
 	// start grpc server
 	RunGRPCServer(logger, sconfig)
+}
+
+func configPath() string {
+	path := os.Getenv("CRAWLER_CONFIG")
+	if path == "" {
+		path = "config.toml"
+	}
+
+	flag.StringVar(&path, "config", path, "crawler config file path")
+	flag.Parse()
+
+	return path
 }
 
 type ServerConfig struct {

@@ -59,13 +59,13 @@ func (s *SQLStorage) Save(dataCells ...*spider.DataCell) error {
 			s.Table[name] = struct{}{}
 		}
 
+		s.dataDocker = append(s.dataDocker, cell)
+
 		if len(s.dataDocker) >= s.BatchCount {
 			if err := s.Flush(); err != nil {
 				s.logger.Error("insert data failed", zap.Error(err))
 			}
 		}
-
-		s.dataDocker = append(s.dataDocker, cell)
 	}
 
 	return nil

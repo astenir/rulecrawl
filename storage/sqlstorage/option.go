@@ -9,7 +9,8 @@ type options struct {
 }
 
 var defaultOptions = options{
-	logger: zap.NewNop(),
+	logger:     zap.NewNop(),
+	BatchCount: 100,
 }
 
 type Option func(opts *options)
@@ -28,6 +29,8 @@ func WithSQLURL(sqlURL string) Option {
 
 func WithBatchCount(batchCount int) Option {
 	return func(opts *options) {
-		opts.BatchCount = batchCount
+		if batchCount > 0 {
+			opts.BatchCount = batchCount
+		}
 	}
 }

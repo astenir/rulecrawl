@@ -84,12 +84,20 @@ type Request struct {
 }
 
 func (r *Request) Fetch() ([]byte, error) {
-	if err := r.Task.Limit.Wait(context.Background()); err != nil {
-		return nil, err
+	if r.Task.Fetcher == nil {
+		return nil, errors.New("fetcher is nil")
+	}
+
+	if r.Task.Limit != nil {
+		if err := r.Task.Limit.Wait(context.Background()); err != nil {
+			return nil, err
+		}
 	}
 	// 随机休眠，模拟人类行为
-	sleeptime := rand.Int63n(r.Task.WaitTime * 1000)
-	time.Sleep(time.Duration(sleeptime) * time.Millisecond)
+	if r.Task.WaitTime > 0 {
+		sleeptime := rand.Int63n(r.Task.WaitTime * 1000)
+		time.Sleep(time.Duration(sleeptime) * time.Millisecond)
+	}
 
 	return r.Task.Fetcher.Get(r)
 }

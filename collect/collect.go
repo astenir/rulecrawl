@@ -67,7 +67,7 @@ func (b BrowserFetch) Get(request *spider.Request) ([]byte, error) {
 	}
 
 	if b.Proxy != nil {
-		transport := http.DefaultTransport.(*http.Transport)
+		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.Proxy = b.Proxy
 		client.Transport = transport
 	}
@@ -93,6 +93,10 @@ func (b BrowserFetch) Get(request *spider.Request) ([]byte, error) {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error status code: %d", resp.StatusCode)
+	}
 
 	bodyReader := bufio.NewReader(resp.Body)
 	e := DeterminEncoding(bodyReader)
