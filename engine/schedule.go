@@ -337,9 +337,20 @@ func AddJsReq(jreq map[string]interface{}) []*spider.Request {
 }
 
 func (c *CrawlerStore) AddJSTask(m *spider.TaskModle) {
-	task := &spider.Task{
-		// Property: m.Property,
+	options := []spider.Option{
+		spider.WithName(m.Name),
+		spider.WithURL(m.URL),
+		spider.WithCookie(m.Cookie),
+		spider.WithReload(m.Reload),
 	}
+	if m.WaitTime > 0 {
+		options = append(options, spider.WithWaitTime(m.WaitTime))
+	}
+	if m.MaxDepth > 0 {
+		options = append(options, spider.WithMaxDepth(m.MaxDepth))
+	}
+
+	task := spider.NewTask(options...)
 
 	task.Rule.Root = func() ([]*spider.Request, error) {
 		vm := otto.New()
