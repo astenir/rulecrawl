@@ -4,7 +4,64 @@ import (
 	"testing"
 
 	"github.com/astenir/rulecrawl/spider"
+	"github.com/astenir/rulecrawl/storage/memstorage"
+	"go.uber.org/zap"
 )
+
+type fakeFetcher struct {
+	body []byte
+}
+
+func (f fakeFetcher) Get(_ *spider.Request) ([]byte, error) {
+	return f.body, nil
+}
+
+func TestCrawlerProcessRequestAndHandleResult(t *testing.T) {
+	storage := memstorage.New()
+	task := spider.NewTask(
+		spider.WithName("books"),
+		spider.WithStorage(storage),
+		spider.WithFetcher(fakeFetcher{body: []byte("Book A")}),
+		spider.WithWaitTime(0),
+	)
+	task.Rule.Trunk = map[string]*spider.Rule{
+		"detail": {
+			ParseFunc: func(ctx *spider.Context) (spider.ParseResult, error) {
+				return spider.ParseResult{
+					Items: []interface{}{
+						ctx.Output(map[string]interface{}{
+							"name": string(ctx.Body),
+						}),
+					},
+				}, nil
+			},
+		},
+	}
+
+	crawler := NewEngine(WithLogger(zap.NewNop()))
+	req := &spider.Request{
+		Task:     task,
+		URL:      "https://example.com/books/1",
+		Method:   "GET",
+		RuleName: "detail",
+	}
+
+	result, ok := crawler.processRequest(req)
+	if !ok {
+		t.Fatal("processRequest() ok = false, want true")
+	}
+
+	crawler.handleResult(result)
+
+	if storage.Len() != 1 {
+		t.Fatalf("storage.Len() = %d, want 1", storage.Len())
+	}
+	cell := storage.All()[0]
+	data := cell.Data["Data"].(map[string]interface{})
+	if data["name"] != "Book A" {
+		t.Fatalf("stored name = %q, want Book A", data["name"])
+	}
+}
 
 func TestAddJSTaskUsesModelProperties(t *testing.T) {
 	store := &CrawlerStore{

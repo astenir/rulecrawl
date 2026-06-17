@@ -175,62 +175,8 @@ func (c *Crawler) CreateWork() {
 
 	for {
 		req := c.scheduler.Pull()
-		if err := req.Check(); err != nil {
-			c.Logger.Error("check failed",
-				zap.Error(err),
-			)
-
-			continue
-		}
-
-		if !req.Task.Reload && c.HasVisited(req) {
-			c.Logger.Debug("request has visited",
-				zap.String("url:", req.URL),
-			)
-
-			continue
-		}
-
-		c.StoreVisited(req)
-
-		body, err := req.Fetch()
-		if err != nil {
-			c.Logger.Error("can't fetch ",
-				zap.Error(err),
-				zap.String("url", req.URL),
-			)
-			c.SetFailure(req)
-
-			continue
-		}
-
-		// result := r.ParseFunc(body, r)
-		rule := req.Task.Rule.Trunk[req.RuleName]
-		if rule.Validate != nil {
-			if err := rule.Validate(body); err != nil {
-				c.Logger.Error("validate response failed ",
-					zap.Error(err),
-					zap.Int("length", len(body)),
-					zap.String("url", req.URL),
-				)
-				c.SetFailure(req)
-
-				continue
-			}
-		}
-
-		ctx := &spider.Context{
-			Body: body,
-			Req:  req,
-		}
-		result, err := rule.ParseFunc(ctx)
-
-		if err != nil {
-			c.Logger.Error("ParseFunc failed ",
-				zap.Error(err),
-				zap.String("url", req.URL),
-			)
-
+		result, ok := c.processRequest(req)
+		if !ok {
 			continue
 		}
 
@@ -242,19 +188,86 @@ func (c *Crawler) CreateWork() {
 	}
 }
 
+func (c *Crawler) processRequest(req *spider.Request) (spider.ParseResult, bool) {
+	if err := req.Check(); err != nil {
+		c.Logger.Error("check failed",
+			zap.Error(err),
+		)
+
+		return spider.ParseResult{}, false
+	}
+
+	if !req.Task.Reload && c.HasVisited(req) {
+		c.Logger.Debug("request has visited",
+			zap.String("url:", req.URL),
+		)
+
+		return spider.ParseResult{}, false
+	}
+
+	c.StoreVisited(req)
+
+	body, err := req.Fetch()
+	if err != nil {
+		c.Logger.Error("can't fetch ",
+			zap.Error(err),
+			zap.String("url", req.URL),
+		)
+		c.SetFailure(req)
+
+		return spider.ParseResult{}, false
+	}
+
+	// result := r.ParseFunc(body, r)
+	rule := req.Task.Rule.Trunk[req.RuleName]
+	if rule.Validate != nil {
+		if err := rule.Validate(body); err != nil {
+			c.Logger.Error("validate response failed ",
+				zap.Error(err),
+				zap.Int("length", len(body)),
+				zap.String("url", req.URL),
+			)
+			c.SetFailure(req)
+
+			return spider.ParseResult{}, false
+		}
+	}
+
+	ctx := &spider.Context{
+		Body: body,
+		Req:  req,
+	}
+	result, err := rule.ParseFunc(ctx)
+
+	if err != nil {
+		c.Logger.Error("ParseFunc failed ",
+			zap.Error(err),
+			zap.String("url", req.URL),
+		)
+
+		return spider.ParseResult{}, false
+	}
+
+	return result, true
+}
+
 func (c *Crawler) HandleResult() {
 	for result := range c.out {
-		for _, item := range result.Items {
-			// todo: store
-			switch d := item.(type) {
-			case *spider.DataCell:
-				if err := d.Task.Storage.Save(d); err != nil {
-					c.Logger.Error("")
-				}
-			}
+		c.handleResult(result)
+	}
+}
 
-			c.Logger.Sugar().Info("get result: ", item)
+func (c *Crawler) handleResult(result spider.ParseResult) {
+	for _, item := range result.Items {
+		// todo: store
+		switch d := item.(type) {
+		case *spider.DataCell:
+			if err := d.Task.Storage.Save(d); err != nil {
+				c.Logger.Error("")
+			}
 		}
+
+		c.Logger.Sugar().Info("get result: ", item)
 	}
 }
 
