@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/astenir/crawler/extensions"
-	"github.com/astenir/crawler/proxy"
-	"github.com/astenir/crawler/spider"
+	"github.com/astenir/rulecrawl/extensions"
+	"github.com/astenir/rulecrawl/proxy"
+	"github.com/astenir/rulecrawl/spider"
 	"go.uber.org/zap"
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding"

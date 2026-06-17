@@ -1,7 +1,7 @@
 package spider
 
 import (
-	"github.com/astenir/crawler/limiter"
+	"github.com/astenir/rulecrawl/limiter"
 	"go.uber.org/zap"
 )
 

@@ -3,9 +3,9 @@ package sqlstorage
 import (
 	"testing"
 
-	"github.com/astenir/crawler/engine"
-	"github.com/astenir/crawler/spider"
-	"github.com/astenir/crawler/sqldb"
+	"github.com/astenir/rulecrawl/engine"
+	"github.com/astenir/rulecrawl/spider"
+	"github.com/astenir/rulecrawl/sqldb"
 	"go.uber.org/zap"
 )
 

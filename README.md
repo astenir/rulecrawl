@@ -1,6 +1,6 @@
-# Crawler
+# RuleCrawl
 
-Crawler is a small Go crawler framework prototype. It provides:
+RuleCrawl is a small rule-based crawler framework prototype in Go. It provides:
 
 - task-based crawling rules
 - concurrent request scheduling with priority support

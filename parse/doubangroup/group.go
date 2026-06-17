@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/astenir/crawler/spider"
+	"github.com/astenir/rulecrawl/spider"
 )
 
 const urlListRe = `(https://www.douban.com/group/topic/[0-9a-z]+/)"[^>]*>([^<]+)</a>`

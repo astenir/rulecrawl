@@ -1,7 +1,7 @@
 package doubangroupjs
 
 import (
-	"github.com/astenir/crawler/spider"
+	"github.com/astenir/rulecrawl/spider"
 )
 
 var DoubangroupJSTask = &spider.TaskModle{

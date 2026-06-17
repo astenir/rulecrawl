@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/astenir/crawler/spider"
+	"github.com/astenir/rulecrawl/spider"
 )
 
 func TestBrowserFetchRejectsNonOKStatus(t *testing.T) {

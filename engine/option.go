@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/astenir/crawler/spider"
+	"github.com/astenir/rulecrawl/spider"
 	"go.uber.org/zap"
 )
 

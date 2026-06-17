@@ -4,10 +4,10 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/astenir/crawler/parse/doubanbook"
-	"github.com/astenir/crawler/parse/doubangroup"
-	"github.com/astenir/crawler/parse/doubangroupjs"
-	"github.com/astenir/crawler/spider"
+	"github.com/astenir/rulecrawl/parse/doubanbook"
+	"github.com/astenir/rulecrawl/parse/doubangroup"
+	"github.com/astenir/rulecrawl/parse/doubangroupjs"
+	"github.com/astenir/rulecrawl/spider"
 	"github.com/robertkrimen/otto"
 	"go.uber.org/zap"
 )

@@ -1,4 +1,4 @@
-module github.com/astenir/crawler
+module github.com/astenir/rulecrawl
 
 go 1.23.3
 
