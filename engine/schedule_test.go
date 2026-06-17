@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/astenir/rulecrawl/spider"
@@ -10,10 +11,25 @@ import (
 
 type fakeFetcher struct {
 	body []byte
+	err  error
 }
 
 func (f fakeFetcher) Get(_ *spider.Request) ([]byte, error) {
-	return f.body, nil
+	return f.body, f.err
+}
+
+type recordingScheduler struct {
+	pushed []*spider.Request
+}
+
+func (s *recordingScheduler) Schedule() {}
+
+func (s *recordingScheduler) Push(requests ...*spider.Request) {
+	s.pushed = append(s.pushed, requests...)
+}
+
+func (s *recordingScheduler) Pull() *spider.Request {
+	return nil
 }
 
 func TestCrawlerProcessRequestAndHandleResult(t *testing.T) {
@@ -60,6 +76,116 @@ func TestCrawlerProcessRequestAndHandleResult(t *testing.T) {
 	data := cell.Data["Data"].(map[string]interface{})
 	if data["name"] != "Book A" {
 		t.Fatalf("stored name = %q, want Book A", data["name"])
+	}
+}
+
+func TestCrawlerProcessRequestFetchFailureRetries(t *testing.T) {
+	scheduler := &recordingScheduler{}
+	task := spider.NewTask(
+		spider.WithName("books"),
+		spider.WithFetcher(fakeFetcher{err: errors.New("fetch failed")}),
+		spider.WithWaitTime(0),
+	)
+	task.Rule.Trunk = map[string]*spider.Rule{
+		"detail": {ParseFunc: func(_ *spider.Context) (spider.ParseResult, error) {
+			return spider.ParseResult{}, nil
+		}},
+	}
+
+	crawler := NewEngine(
+		WithLogger(zap.NewNop()),
+		WithScheduler(scheduler),
+	)
+	req := &spider.Request{
+		Task:     task,
+		URL:      "https://example.com/books/1",
+		Method:   "GET",
+		RuleName: "detail",
+	}
+
+	_, ok := crawler.processRequest(req)
+	if ok {
+		t.Fatal("processRequest() ok = true, want false")
+	}
+	if len(scheduler.pushed) != 1 {
+		t.Fatalf("len(scheduler.pushed) = %d, want 1", len(scheduler.pushed))
+	}
+	if scheduler.pushed[0] != req {
+		t.Fatal("processRequest did not retry the failed request")
+	}
+}
+
+func TestCrawlerProcessRequestValidateFailureRetries(t *testing.T) {
+	scheduler := &recordingScheduler{}
+	task := spider.NewTask(
+		spider.WithName("books"),
+		spider.WithFetcher(fakeFetcher{body: []byte("bad body")}),
+		spider.WithWaitTime(0),
+	)
+	task.Rule.Trunk = map[string]*spider.Rule{
+		"detail": {
+			Validate: func(_ []byte) error {
+				return errors.New("invalid body")
+			},
+			ParseFunc: func(_ *spider.Context) (spider.ParseResult, error) {
+				return spider.ParseResult{}, nil
+			},
+		},
+	}
+
+	crawler := NewEngine(
+		WithLogger(zap.NewNop()),
+		WithScheduler(scheduler),
+	)
+	req := &spider.Request{
+		Task:     task,
+		URL:      "https://example.com/books/1",
+		Method:   "GET",
+		RuleName: "detail",
+	}
+
+	_, ok := crawler.processRequest(req)
+	if ok {
+		t.Fatal("processRequest() ok = true, want false")
+	}
+	if len(scheduler.pushed) != 1 {
+		t.Fatalf("len(scheduler.pushed) = %d, want 1", len(scheduler.pushed))
+	}
+}
+
+func TestCrawlerProcessRequestParseFailureDoesNotStore(t *testing.T) {
+	storage := memstorage.New()
+	task := spider.NewTask(
+		spider.WithName("books"),
+		spider.WithStorage(storage),
+		spider.WithFetcher(fakeFetcher{body: []byte("Book A")}),
+		spider.WithWaitTime(0),
+	)
+	task.Rule.Trunk = map[string]*spider.Rule{
+		"detail": {
+			ParseFunc: func(_ *spider.Context) (spider.ParseResult, error) {
+				return spider.ParseResult{}, errors.New("parse failed")
+			},
+		},
+	}
+
+	crawler := NewEngine(WithLogger(zap.NewNop()))
+	req := &spider.Request{
+		Task:     task,
+		URL:      "https://example.com/books/1",
+		Method:   "GET",
+		RuleName: "detail",
+	}
+
+	result, ok := crawler.processRequest(req)
+	if ok {
+		t.Fatal("processRequest() ok = true, want false")
+	}
+
+	crawler.handleResult(result)
+
+	if storage.Len() != 0 {
+		t.Fatalf("storage.Len() = %d, want 0", storage.Len())
 	}
 }
 
