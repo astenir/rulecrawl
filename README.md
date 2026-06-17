@@ -62,9 +62,9 @@ Important sections:
 - `storage.sqlURL`: MySQL DSN
 - `GRPCServer`: go-micro and HTTP gateway addresses
 
-## Built-in Tasks
+## Example Tasks
 
-Built-in tasks are registered in `engine.init()`:
+The engine package does not register site-specific tasks by itself. The application entrypoint registers the current Douban examples through `examples/douban`:
 
 - `douban_book_list`
 - Douban group examples

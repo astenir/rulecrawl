@@ -4,19 +4,10 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/astenir/rulecrawl/parse/doubanbook"
-	"github.com/astenir/rulecrawl/parse/doubangroup"
-	"github.com/astenir/rulecrawl/parse/doubangroupjs"
 	"github.com/astenir/rulecrawl/spider"
 	"github.com/robertkrimen/otto"
 	"go.uber.org/zap"
 )
-
-func init() {
-	Store.AddJSTask(doubangroupjs.DoubangroupJSTask)
-	Store.Add(doubangroup.DoubangroupTask)
-	Store.Add(doubanbook.DoubanBookTask)
-}
 
 func (c *CrawlerStore) Add(task *spider.Task) {
 	c.Hash[task.Name] = task

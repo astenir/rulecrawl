@@ -28,6 +28,7 @@ import (
 
 	"github.com/astenir/rulecrawl/collect"
 	"github.com/astenir/rulecrawl/engine"
+	doubanExamples "github.com/astenir/rulecrawl/examples/douban"
 	"github.com/astenir/rulecrawl/limiter"
 	"github.com/astenir/rulecrawl/proxy"
 	"github.com/astenir/rulecrawl/spider"
@@ -102,6 +103,8 @@ func main() {
 
 		return
 	}
+
+	doubanExamples.Register(engine.Store)
 
 	// init tasks
 	var tcfg []spider.TaskConfig
