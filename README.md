@@ -8,6 +8,7 @@ RuleCrawl is a small rule-based crawler framework prototype in Go. It provides:
 - HTTP fetching with cookie, proxy, timeout, random user-agent, and charset handling
 - parser output through `spider.DataCell`
 - MySQL storage with automatic table creation and batched inserts
+- in-memory storage for tests and local demos
 - a small go-micro/gRPC gateway demo service
 
 ## Requirements
