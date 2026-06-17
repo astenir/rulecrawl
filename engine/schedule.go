@@ -213,18 +213,20 @@ func (c *Crawler) CreateWork() {
 			continue
 		}
 
-		if len(body) < 6000 {
-			c.Logger.Error("can't fetch ",
-				zap.Int("length", len(body)),
-				zap.String("url", req.URL),
-			)
-			c.SetFailure(req)
-
-			continue
-		}
-
 		// result := r.ParseFunc(body, r)
 		rule := req.Task.Rule.Trunk[req.RuleName]
+		if rule.Validate != nil {
+			if err := rule.Validate(body); err != nil {
+				c.Logger.Error("validate response failed ",
+					zap.Error(err),
+					zap.Int("length", len(body)),
+					zap.String("url", req.URL),
+				)
+				c.SetFailure(req)
+
+				continue
+			}
+		}
 
 		ctx := &spider.Context{
 			Body: body,

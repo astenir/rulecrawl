@@ -3,7 +3,9 @@ package sqldb
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
+	"unicode"
 
 	"go.uber.org/zap"
 )
@@ -65,46 +67,107 @@ func (d *Sqldb) OpenDB() error {
 }
 
 func (d *Sqldb) CreateTable(t TableData) error {
-	if len(t.ColumnNames) == 0 {
-		return errors.New("column can not be empty")
+	sql, err := buildCreateTableSQL(t)
+	if err != nil {
+		return err
 	}
-
-	sql := `CREATE TABLE IF NOT EXISTS ` + t.TableName + " ("
-
-	if t.AutoKey {
-		sql += `id INT(12) NOT NULL PRIMARY KEY AUTO_INCREMENT,`
-	}
-
-	for _, t := range t.ColumnNames {
-		sql += t.Title + ` ` + t.Type + `,`
-	}
-
-	sql = sql[:len(sql)-1] + `) ENGINE=MyISAM DEFAULT CHARSET=utf8;`
 
 	d.logger.Debug("crate table", zap.String("sql", sql))
 
-	_, err := d.db.Exec(sql)
+	_, err = d.db.Exec(sql)
 
 	return err
 }
 
-func (d *Sqldb) Insert(t TableData) error {
+func buildCreateTableSQL(t TableData) (string, error) {
 	if len(t.ColumnNames) == 0 {
-		return errors.New("empty column")
+		return "", errors.New("column can not be empty")
 	}
 
-	sql := `INSERT INTO ` + t.TableName + `(`
-
-	for _, v := range t.ColumnNames {
-		sql += v.Title + ","
+	tableName, err := quoteIdentifier(t.TableName)
+	if err != nil {
+		return "", err
 	}
 
-	sql = sql[:len(sql)-1] + `) VALUES `
+	columns := make([]string, 0, len(t.ColumnNames)+1)
+	if t.AutoKey {
+		columns = append(columns, "`id` INT(12) NOT NULL PRIMARY KEY AUTO_INCREMENT")
+	}
 
-	blank := ",(" + strings.Repeat(",?", len(t.ColumnNames))[1:] + ")"
-	sql += strings.Repeat(blank, t.DataCount)[1:] + `;`
+	for _, field := range t.ColumnNames {
+		columnName, err := quoteIdentifier(field.Title)
+		if err != nil {
+			return "", err
+		}
+		columns = append(columns, columnName+` `+field.Type)
+	}
+
+	return `CREATE TABLE IF NOT EXISTS ` + tableName + ` (` + strings.Join(columns, ",") + `) ENGINE=MyISAM DEFAULT CHARSET=utf8;`, nil
+}
+
+func (d *Sqldb) Insert(t TableData) error {
+	sql, err := buildInsertSQL(t)
+	if err != nil {
+		return err
+	}
+
 	d.logger.Debug("insert table", zap.String("sql", sql))
-	_, err := d.db.Exec(sql, t.Args...)
+	_, err = d.db.Exec(sql, t.Args...)
 
 	return err
+}
+
+func buildInsertSQL(t TableData) (string, error) {
+	if len(t.ColumnNames) == 0 {
+		return "", errors.New("empty column")
+	}
+
+	if t.DataCount <= 0 {
+		return "", errors.New("data count must be positive")
+	}
+
+	if len(t.Args) != len(t.ColumnNames)*t.DataCount {
+		return "", errors.New("args count does not match columns and data count")
+	}
+
+	tableName, err := quoteIdentifier(t.TableName)
+	if err != nil {
+		return "", err
+	}
+
+	columnNames := make([]string, 0, len(t.ColumnNames))
+	for _, field := range t.ColumnNames {
+		columnName, err := quoteIdentifier(field.Title)
+		if err != nil {
+			return "", err
+		}
+		columnNames = append(columnNames, columnName)
+	}
+
+	blank := ",(" + strings.Repeat(",?", len(t.ColumnNames))[1:] + ")"
+	sql := `INSERT INTO ` + tableName + `(` + strings.Join(columnNames, ",") + `) VALUES `
+	sql += strings.Repeat(blank, t.DataCount)[1:] + `;`
+
+	return sql, nil
+}
+
+func quoteIdentifier(identifier string) (string, error) {
+	if identifier == "" {
+		return "", errors.New("identifier can not be empty")
+	}
+
+	for i, r := range identifier {
+		switch {
+		case r == '_':
+		case unicode.IsLetter(r):
+		case unicode.IsDigit(r):
+			if i == 0 {
+				return "", fmt.Errorf("identifier %q must not start with a digit", identifier)
+			}
+		default:
+			return "", fmt.Errorf("identifier %q contains invalid character %q", identifier, r)
+		}
+	}
+
+	return "`" + identifier + "`", nil
 }
